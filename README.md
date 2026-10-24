@@ -116,10 +116,10 @@ idf.py -p /dev/ttyACM0 flash monitor     # Windows 用 COM3 之類，macOS 用 /
 
 ## 發佈新版本（維護者）
 
-1. 修改 `main/app_main.cc` 的 `kVersion`（例如 `1.3.0`）並推送到 `main`。
-2. 建立並推送相同版本的 tag：`git tag -a v1.3.0 -m "更新說明" && git push origin v1.3.0`
-3. GitHub Actions（`.github/workflows/release.yml`）會自動編譯、建立 Release，並更新安裝網頁及
-   `firmware/ota.json`。之後各顯示屏按「檢查更新」就會看到新版本。
+1. 修改 `main/app_main.cc` 的 `kVersion`（例如 `1.3.0`）。
+2. 提交並推送到 `main`（commit 第一行會成為更新說明）。
+3. GitHub Actions（`.github/workflows/release.yml`）發現這個版本未發佈，就會自動編譯、建立
+   Release 及 `v1.3.0` tag，並更新安裝網頁及 `firmware/ota.json`。之後各顯示屏按「檢查更新」就會看到新版本。
 
 首次使用前，要在 GitHub repository 的 **Settings → Pages** 把 Source 設為 **GitHub Actions**。
 

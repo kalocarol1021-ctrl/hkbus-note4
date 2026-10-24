@@ -1,18 +1,16 @@
-# Push a tag such as v1.2.0 (matching kVersion in main/app_main.cc) to:
+# Publishes a release whenever main contains a version (kVersion in
+# main/app_main.cc) that has no GitHub Release yet:
 #   1. build the firmware,
-#   2. publish a GitHub Release with the binaries,
+#   2. create the GitHub Release (and its vX.Y.Z tag) with the binaries,
 #   3. deploy the browser installer + ota.json to GitHub Pages, which the
 #      devices check for updates.
+# To release: change kVersion, push to main.
 name: Release
 
 on:
   push:
-    tags: ["v*.*.*"]
+    branches: [main]
   workflow_dispatch:
-    inputs:
-      tag:
-        description: "Existing tag to (re)publish, e.g. v1.2.0"
-        required: true
 
 permissions:
   contents: write
@@ -24,27 +22,34 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build:
+  check:
     runs-on: ubuntu-latest
-    container: espressif/idf:v5.5.2
     outputs:
       version: ${{ steps.ver.outputs.version }}
+      new: ${{ steps.ver.outputs.new }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.tag || github.ref }}
-      - name: Check version
+      - name: Is this version released yet?
         id: ver
-        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="${{ github.event.inputs.tag || github.ref_name }}"
-          VERSION="${TAG#v}"
-          CODE=$(sed -n 's/.*kVersion\[\] = "\(.*\)";/\1/p' main/app_main.cc)
-          if [ "$VERSION" != "$CODE" ]; then
-            echo "::error::Tag $TAG does not match kVersion $CODE in main/app_main.cc"
-            exit 1
-          fi
+          VERSION=$(sed -n 's/.*kVersion\[\] = "\(.*\)";/\1/p' main/app_main.cc)
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo "v$VERSION already released"
+            echo "new=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "new=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    needs: check
+    if: needs.check.outputs.new == 'true'
+    runs-on: ubuntu-latest
+    container: espressif/idf:v5.5.2
+    steps:
+      - uses: actions/checkout@v4
       - name: Build
         shell: bash
         run: |
@@ -61,15 +66,13 @@ jobs:
             build/hkbus-note4-full.bin
 
   publish:
-    needs: build
+    needs: [check, build]
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.tag || github.ref }}
       - uses: actions/download-artifact@v4
         with:
           name: firmware
@@ -86,10 +89,10 @@ jobs:
         uses: actions/configure-pages@v5
       - name: Assemble site
         env:
-          VERSION: ${{ needs.build.outputs.version }}
+          VERSION: ${{ needs.check.outputs.version }}
           BASE_URL: ${{ steps.pages.outputs.base_url }}
         run: |
-          NOTES=$(git tag -l --format='%(contents:subject)' "v$VERSION" 2>/dev/null || true)
+          NOTES=$(git log -1 --format=%s)
           python3 scripts/make_site.py fw site "$BASE_URL" "$VERSION" "$NOTES"
           mkdir -p site/vendor
           cp /tmp/ejs/node_modules/esptool-js/bundle.js site/vendor/esptool.js
@@ -102,7 +105,7 @@ jobs:
       - name: GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ needs.build.outputs.version }}
+          VERSION: ${{ needs.check.outputs.version }}
         run: |
           cp fw/hkbus-note4-full.bin "hkbus-note4-v$VERSION-full.bin"
           cp fw/zectrix_hkbus_board.bin "hkbus-note4-v$VERSION-app.bin"
@@ -110,6 +113,6 @@ jobs:
             gh release upload "v$VERSION" hkbus-note4-v$VERSION-*.bin site/firmware/ota.json --clobber
           else
             gh release create "v$VERSION" hkbus-note4-v$VERSION-*.bin site/firmware/ota.json \
-              --title "v$VERSION" \
+              --target "$GITHUB_SHA" --title "v$VERSION" \
               --notes "安裝：用電腦版 Chrome 開啟 ${{ steps.deploy.outputs.page_url }}。已安裝的顯示屏可在手機設定頁按「檢查更新」。"
           fi
