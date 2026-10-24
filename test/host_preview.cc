@@ -9,6 +9,7 @@
 
 #include "hk_model.h"
 #include "hk_screen.h"
+#include "hk_weather.h"
 
 using namespace hk;
 
@@ -108,6 +109,29 @@ int main(int argc, char** argv) {
     view.network_ok = false;
     DrawBoard(fb, fonts, view);
     WritePbm(fb, out + "_board4_p2.pbm");
+
+    // Weather corner + warnings.
+    view.page = 0;
+    view.battery_percent = -1;
+    view.network_ok = true;
+    view.weather.show = true;
+    view.weather.has_now = true;
+    view.weather.place = "大埔";
+    view.weather.temperature = 24;
+    view.weather.desc = "微雨";
+    DrawBoard(fb, fonts, view);
+    WritePbm(fb, out + "_wx.pbm");
+    view.weather.warnings = {{"黃色暴雨", 11, false}, {"雷暴警告", 12, false}};
+    DrawBoard(fb, fonts, view);
+    WritePbm(fb, out + "_wx_warn.pbm");
+    view.weather.warnings = {{"八號風球", 2, true}, {"紅色暴雨", 4, true}, {"雷暴警告", 12, false}};
+    DrawBoard(fb, fonts, view);
+    WritePbm(fb, out + "_wx_severe.pbm");
+    cfg.rows = 3;
+    DrawBoard(fb, fonts, view);
+    WritePbm(fb, out + "_wx_severe3.pbm");
+    cfg.rows = 4;
+    view.weather = WeatherView();
 
     // These mirror the screens composed in main/app_main.cc.
     DrawMessage(fb, fonts, "設定 Wi-Fi",

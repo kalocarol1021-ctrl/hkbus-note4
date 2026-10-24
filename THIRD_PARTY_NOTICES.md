@@ -33,6 +33,12 @@ release workflow copies its `bundle.js` and licence into `vendor/`.
 Build dependencies, not copied into this project; see their own licences.
 `espressif/esp_codec_dev` is downloaded by the ESP-IDF Component Manager.
 
+## Weather data
+
+Temperature, weather icons and warnings come from the Hong Kong Observatory
+open data API (https://data.weather.gov.hk/), subject to the Observatory's
+terms of use.
+
 ## Arrival-time and route data
 
 At run time the device reads real-time arrival information from the public

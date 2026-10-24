@@ -1,0 +1,5 @@
+{"rainfall":{"data":[{"unit":"mm","place":"中西區","max":0,"main":"FALSE"},{"unit":"mm","place":"大埔","max":2,"main":"FALSE"}],"startTime":"2026-10-24T21:45:00+08:00","endTime":"2026-10-24T22:45:00+08:00"},
+"icon":[62],"iconUpdateTime":"2026-10-24T22:00:00+08:00","uvindex":"","updateTime":"2026-10-24T23:02:00+08:00",
+"warningMessage":["八號東北烈風或暴風信號現正生效。"],
+"temperature":{"data":[{"place":"京士柏","value":24,"unit":"C"},{"place":"香港天文台","value":25,"unit":"C"},{"place":"大埔","value":23.6,"unit":"C"},{"place":"沙田","value":24,"unit":"C"}],"recordTime":"2026-10-24T23:00:00+08:00"},
+"humidity":{"recordTime":"2026-10-24T23:00:00+08:00","data":[{"unit":"percent","value":88,"place":"香港天文台"}]}}

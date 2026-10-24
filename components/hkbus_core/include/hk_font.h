@@ -47,6 +47,11 @@ public:
     std::string Ellipsize(const std::string& utf8, int max_width) const;
 
     bool Has(uint32_t cp) const { return Find(cp) != nullptr; }
+    // Height of a glyph's ink above the baseline (0 if missing).
+    int GlyphTop(uint32_t cp) const {
+        const Entry* e = Find(cp);
+        return e != nullptr ? -e->yo : 0;
+    }
 
 private:
     struct Entry {

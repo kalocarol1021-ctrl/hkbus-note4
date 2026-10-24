@@ -28,6 +28,7 @@
 #include "hk_font.h"
 #include "hk_model.h"
 #include "hk_screen.h"
+#include "hk_weather.h"
 #include "http_fetch.h"
 #include "net.h"
 #include "ota.h"
@@ -52,7 +53,7 @@ EMBED(num58)
 namespace {
 
 constexpr char kTag[] = "hkbus";
-constexpr char kVersion[] = "1.2.0";
+constexpr char kVersion[] = "1.3.0";
 constexpr char kNvsNs[] = "hkbus";
 constexpr int64_t kFetchIntervalUs = 60LL * 1000 * 1000;      // once a minute
 constexpr int64_t kFullRefreshIntervalUs = 30LL * 60 * 1000 * 1000;
@@ -140,6 +141,16 @@ private:
     std::string update_error_;
     int update_drawn_bucket_ = -1;
     bool marked_valid_ = false;
+
+    // ---- Hong Kong Observatory (guarded by mu_) ----
+    void FetchWeather(HttpFetcher& fetcher, const hk::Config& cfg);
+    hk::WeatherView WeatherForScreen(const hk::Config& cfg);
+    hk::WeatherNow weather_now_;
+    std::vector<hk::Warning> warnings_;
+    int64_t weather_at_ = 0;      // last successful fetch (epoch)
+    int64_t warnings_at_ = 0;
+    int64_t weather_try_ = 0;     // last attempt (epoch)
+    int64_t warnings_try_ = 0;
 };
 
 constexpr int64_t kTemporaryAwakeUs = 10LL * 60 * 1000 * 1000;
@@ -315,6 +326,7 @@ void App::DrawCurrent(bool force_full) {
             view.now = net::TimeValid() ? time(nullptr) : 0;
             view.network_ok = st.sta_connected && last_fetch_ok_;
             view.battery_percent = battery_percent_;
+            view.weather = WeatherForScreen(cfg);
             hk::DrawBoard(fb_, fonts_, view);
         }
     }
@@ -366,10 +378,60 @@ bool App::SaveConfig(const std::string& json, std::string* error) {
         cfg_ = cfg;
         rows_.assign(cfg_.items.size(), {});
         ++generation_;
+        weather_try_ = 0;
+        weather_now_ = hk::WeatherNow();
     }
     config_changed_ = true;
     RequestFetch();
     return true;
+}
+
+// Temperature/weather every 10 minutes (the Observatory updates hourly),
+// warnings every 5 minutes.
+void App::FetchWeather(HttpFetcher& fetcher, const hk::Config& cfg) {
+    const int64_t now = time(nullptr);
+    std::string body;
+    if (now - weather_try_ >= 600) {
+        weather_try_ = now;
+        hk::WeatherNow w;
+        if (fetcher.Fetch(hk::kHkoCurrentUrl, "", &body) &&
+            hk::ParseHkoCurrent(body.c_str(), cfg.weather_place, &w)) {
+            std::lock_guard<std::mutex> lock(mu_);
+            weather_now_ = w;
+            weather_at_ = now;
+        } else {
+            ESP_LOGW(kTag, "HKO weather fetch failed");
+        }
+    }
+    if (now - warnings_try_ >= 300) {
+        warnings_try_ = now;
+        std::vector<hk::Warning> ws;
+        if (fetcher.Fetch(hk::kHkoWarningsUrl, "", &body) && hk::ParseHkoWarnings(body.c_str(), &ws)) {
+            std::lock_guard<std::mutex> lock(mu_);
+            warnings_ = ws;
+            warnings_at_ = now;
+        } else {
+            ESP_LOGW(kTag, "HKO warnings fetch failed");
+        }
+    }
+}
+
+hk::WeatherView App::WeatherForScreen(const hk::Config& cfg) {
+    hk::WeatherView v;
+    v.show = cfg.weather_on;
+    if (!v.show) return v;
+    const int64_t now = time(nullptr);
+    std::lock_guard<std::mutex> lock(mu_);
+    // Old data is hidden rather than shown as if current; warnings in
+    // particular must not linger after they were cancelled.
+    if (weather_now_.ok && now - weather_at_ < 90 * 60) {
+        v.has_now = true;
+        v.place = weather_now_.place;
+        v.temperature = weather_now_.temperature;
+        v.desc = weather_now_.desc;
+    }
+    if (now - warnings_at_ < 30 * 60) v.warnings = warnings_;
+    return v;
 }
 
 void App::RequestFetch() {
@@ -432,6 +494,7 @@ void App::FetchTask() {
                 }
             }
         }
+        if (cfg.weather_on) FetchWeather(fetcher, cfg);
         fetcher.CloseAll();
         last_fetch_ok_ = any_ok;
         ESP_LOGI(kTag, "fetch done (%s), free heap %u", any_ok ? "ok" : "failed",
@@ -459,6 +522,16 @@ std::string App::StateJson() {
     cJSON_AddStringToObject(root, "ap_ssid", st.ap_ssid.c_str());
     cJSON_AddNumberToObject(root, "time", st.time_valid ? static_cast<double>(time(nullptr)) : 0);
     cJSON_AddNumberToObject(root, "battery", battery_percent_);
+    {
+        const hk::WeatherView wv = WeatherForScreen(cfg);
+        cJSON* w = cJSON_AddObjectToObject(root, "weather");
+        cJSON_AddBoolToObject(w, "ok", wv.has_now);
+        cJSON_AddStringToObject(w, "place", wv.place.c_str());
+        cJSON_AddNumberToObject(w, "temp", wv.temperature);
+        cJSON_AddStringToObject(w, "desc", wv.desc.c_str());
+        cJSON* arr = cJSON_AddArrayToObject(w, "warnings");
+        for (const hk::Warning& x : wv.warnings) cJSON_AddItemToArray(arr, cJSON_CreateString(x.text.c_str()));
+    }
     {
         static const char* kStates[] = {"idle", "running", "failed", "done"};
         cJSON* up = cJSON_AddObjectToObject(root, "update");

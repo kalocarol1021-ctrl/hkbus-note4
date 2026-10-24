@@ -12,6 +12,7 @@
 
 #include "hk_model.h"
 #include "hk_screen.h"
+#include "hk_weather.h"
 
 using namespace hk;
 
@@ -161,11 +162,37 @@ static void TestConfig() {
     CHECK(!ParseConfig("not json", &c2, &err));
 }
 
+static void TestWeather(const std::string& dir) {
+    WeatherNow w;
+    CHECK(ParseHkoCurrent(ReadFile(dir + "/hko_rhrread.json").c_str(), "大埔", &w));
+    CHECK(w.place == "大埔" && w.temperature == 24 && w.icon == 62 && w.desc == "微雨");
+    CHECK(ParseHkoCurrent(ReadFile(dir + "/hko_rhrread.json").c_str(), "不存在", &w));
+    CHECK(w.place == "香港天文台" && w.temperature == 25);
+    CHECK(!ParseHkoCurrent("oops", "大埔", &w));
+
+    std::vector<Warning> ws;
+    CHECK(ParseHkoWarnings(ReadFile(dir + "/hko_warnsum.json").c_str(), &ws));
+    CHECK(ws.size() == 3);  // cancelled fire warning dropped
+    CHECK(ws[0].text == "八號風球" && ws[0].severe);
+    CHECK(ws[1].text == "黃色暴雨" && !ws[1].severe);
+    CHECK(ws[2].text == "雷暴警告");
+    CHECK(ParseHkoWarnings(ReadFile(dir + "/hko_warnsum_empty.json").c_str(), &ws) && ws.empty());
+
+    Config c;
+    std::string err;
+    CHECK(ParseConfig("{\"items\":[]}", &c, &err) && c.weather_on && c.weather_place == "香港天文台");
+    CHECK(ParseConfig("{\"weather\":{\"on\":true,\"place\":\"大埔\"},\"items\":[]}", &c, &err));
+    CHECK(c.weather_place == "大埔");
+    Config c2;
+    CHECK(ParseConfig(SerializeConfig(c).c_str(), &c2, &err) && c2.weather_place == "大埔" && c2.weather_on);
+}
+
 int main(int argc, char** argv) {
     const std::string dir = argc > 1 ? argv[1] : "test/fixtures";
     TestTime();
     TestParsers(dir);
     TestConfig();
+    TestWeather(dir);
     if (g_fail == 0) std::printf("all tests passed\n");
     return g_fail == 0 ? 0 : 1;
 }

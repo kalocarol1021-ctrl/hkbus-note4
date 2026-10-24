@@ -25,8 +25,10 @@ state = {
     "ip": "127.0.0.1", "rssi": -52, "ap_ssid": "HKBus-1A2B", "time": 0,
     "battery": -1,
     "update": {"state": "idle", "progress": 0, "error": ""},
+    "weather": {"ok": True, "place": "大埔", "temp": 24, "desc": "微雨", "warnings": ["黃色暴雨"]},
     "config": {"v": 1, "title": "", "rows": 4, "cycle": 0,
-               "hours": {"on": False, "ranges": []}, "items": []},
+               "hours": {"on": False, "ranges": []},
+               "weather": {"on": True, "place": "香港天文台"}, "items": []},
     "rows": [],
 }
 

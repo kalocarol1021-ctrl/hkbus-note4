@@ -44,6 +44,8 @@ struct Config {
     int cycle = 0;              // auto page change every N seconds, 0 = off
     bool hours_on = false;      // only show/update during `hours`
     std::vector<TimeRange> hours;  // up to 3 windows
+    bool weather_on = true;     // HKO temperature, weather and warnings
+    std::string weather_place = "香港天文台";  // HKO temperature station
     std::vector<Item> items;
 };
 

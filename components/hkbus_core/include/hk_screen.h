@@ -9,6 +9,7 @@
 #include "hk_fb.h"
 #include "hk_font.h"
 #include "hk_model.h"
+#include "hk_weather.h"
 
 namespace hk {
 
@@ -33,6 +34,16 @@ struct RowState {
 // times while the network is down).
 constexpr int64_t kStaleAfterSeconds = 180;
 
+// Weather corner and warning strip (Hong Kong Observatory).
+struct WeatherView {
+    bool show = false;            // feature enabled
+    bool has_now = false;         // temperature data available
+    std::string place;
+    int temperature = 0;
+    std::string desc;
+    std::vector<Warning> warnings;
+};
+
 struct BoardView {
     const Config* config = nullptr;
     int page = 0;                       // 0-based
@@ -40,11 +51,17 @@ struct BoardView {
     int64_t now = 0;                    // epoch seconds; 0 = clock unknown
     bool network_ok = true;
     int battery_percent = -1;           // <0 = hide (USB powered)
+    WeatherView weather;
 };
 
 int PageCount(const Config& config);
 
 void DrawBoard(Framebuffer& fb, const Fonts& fonts, const BoardView& view);
+
+// Warning strip under the header (used by the board and message screens).
+// Returns its height, 0 when there are no warnings.
+int DrawWarningStrip(Framebuffer& fb, const Fonts& fonts, int y,
+                     const std::vector<Warning>& warnings);
 
 // Generic message screen: title bar, a few lines of text and an optional
 // QR code on the right (e.g. Wi-Fi join code or the settings URL).

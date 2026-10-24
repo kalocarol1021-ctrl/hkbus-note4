@@ -26,8 +26,7 @@ struct Layout {
     const Font* note_font;    // remarks / "即將到站"
 };
 
-Layout MakeLayout(const Fonts& f, int rows) {
-    const int area = kH - kHeader;
+Layout MakeLayout(const Fonts& f, int rows, int area) {
     if (rows == 3) {
         return {area / 3, 124, 140, &f.n58, &f.l32, &f.m26, &f.n58, &f.m26, &f.s20, &f.m26};
     }
@@ -150,9 +149,10 @@ EtaExtent DrawEta(Framebuffer& fb, const Fonts& fonts, const Layout& L, int righ
     const Font& big = *L.big_font;
     const Font& unit = *L.unit_font;
     const Font& next = *L.next_font;
-    const int digit_cap = big.ascent() * 74 / 100;
+    const int digit_cap = big.GlyphTop('8') > 0 ? big.GlyphTop('8') : big.ascent() * 74 / 100;
     const bool has_next = mins.size() > 1;
-    const int block_h = digit_cap + (has_next ? 8 + next.ascent() : 0);
+    const int gap = h < 62 ? 3 : 8;  // rows are shorter under a warning strip
+    const int block_h = digit_cap + (has_next ? gap + next.ascent() : 0);
     const int top = mid - block_h / 2;
     const int big_base = top + digit_cap;
 
@@ -166,7 +166,7 @@ EtaExtent DrawEta(Framebuffer& fb, const Fonts& fonts, const Layout& L, int righ
     }
     if (has_next) {
         std::vector<int> rest(mins.begin() + 1, mins.end());
-        ext.bottom_left = DrawRight(fb, next, right, big_base + 8 + next.ascent(),
+        ext.bottom_left = DrawRight(fb, next, right, big_base + gap + next.ascent(),
                                     "之後 " + JoinMinutes(rest) + " 分");
     } else {
         ext.bottom_left = ext.top_left;
@@ -202,15 +202,24 @@ void DrawBoard(Framebuffer& fb, const Fonts& fonts, const BoardView& view) {
                 (right.empty() ? "" : "  " + right);
     }
     std::string title = cfg.title.empty() ? "巴士到站時間" : cfg.title;
+    // Weather replaces the title: "大埔 24° 微雨".
+    if (view.weather.show && view.weather.has_now) {
+        title = view.weather.place + " " + std::to_string(view.weather.temperature) + "°";
+        if (!view.weather.desc.empty()) title += " " + view.weather.desc;
+    }
     if (!view.network_ok) title = "網絡中斷，稍後重試";
     DrawHeader(fb, fonts, title, right);
 
-    const Layout L = MakeLayout(fonts, rows);
+    const int strip = view.weather.show
+                          ? DrawWarningStrip(fb, fonts, kHeader, view.weather.warnings)
+                          : 0;
+    const int top0 = kHeader + strip;
+    const Layout L = MakeLayout(fonts, rows, kH - top0);
     const int start = page * rows;
     const int end = std::min(static_cast<int>(cfg.items.size()), start + rows);
     for (int i = start; i < end; ++i) {
         const Item& item = cfg.items[i];
-        const int y = kHeader + (i - start) * L.row_h;
+        const int y = top0 + (i - start) * L.row_h;
         if (i > start) fb.HLine(kMargin, y, kW - 2 * kMargin);
 
         const int box_h = L.row_h - 12;
@@ -257,6 +266,43 @@ void DrawBoard(Framebuffer& fb, const Fonts& fonts, const BoardView& view) {
         fb.FillRect(kW - w, kH - 26, w, 26, true);
         fonts.s20.Draw(fb, kW - w + 6, kH - 6, t, false);
     }
+}
+
+int DrawWarningStrip(Framebuffer& fb, const Fonts& fonts, int y,
+                     const std::vector<Warning>& warnings) {
+    if (warnings.empty()) return 0;
+    constexpr int kStrip = 32;
+    bool severe = false;
+    std::string text;
+    for (const Warning& w : warnings) {
+        severe |= w.severe;
+        if (text.find(w.text) != std::string::npos) continue;  // e.g. one 八號風球
+        if (!text.empty()) text += "、";
+        text += w.text;
+    }
+    // Severe (signal 8+, red/black rain): white on black with a gap from the
+    // header. Otherwise black on white with a heavy underline.
+    const int top = y + 2;
+    const int h = kStrip - 2;
+    if (severe) fb.FillRect(0, top, kW, h, true);
+    else fb.FillRect(0, y + kStrip - 3, kW, 3, true);
+
+    // Warning sign: triangle with "!" drawn by hand.
+    const int tx = 8, tw = 26, th = 23, ty = top + (h - th) / 2;
+    for (int r = 0; r < th; ++r) {
+        const int half = (r * tw / 2) / th;
+        fb.FillRect(tx + tw / 2 - half, ty + r, 2 * half + 1, 1, !severe);
+    }
+    fb.FillRect(tx + tw / 2 - 1, ty + 7, 3, 9, severe);
+    fb.FillRect(tx + tw / 2 - 1, ty + 18, 3, 3, severe);
+
+    const int text_x = tx + tw + 8;
+    const int max_w = kW - text_x - 8;
+    const Font* f = &fonts.m26;
+    if (f->TextWidth(text) > max_w) f = &fonts.s20;
+    const int baseline = top + (h + f->ascent()) / 2 - 1;
+    f->Draw(fb, text_x, baseline, f->Ellipsize(text, max_w), !severe);
+    return kStrip;
 }
 
 int DrawQr(Framebuffer& fb, int x, int y, const std::string& text, int scale) {

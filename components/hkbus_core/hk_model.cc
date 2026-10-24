@@ -263,6 +263,12 @@ bool ParseConfig(const char* json, Config* out, std::string* error) {
             }
         }
     }
+    const cJSON* weather = cJSON_GetObjectItemCaseSensitive(root, "weather");
+    if (cJSON_IsObject(weather)) {
+        c.weather_on = Truthy(weather, "on");
+        const std::string place = Str(weather, "place");
+        if (!place.empty() && place.size() < 40) c.weather_place = place;
+    }
     const cJSON* items = cJSON_GetObjectItemCaseSensitive(root, "items");
     const cJSON* it = nullptr;
     cJSON_ArrayForEach(it, items) {
@@ -315,6 +321,9 @@ std::string SerializeConfig(const Config& c) {
         cJSON_AddStringToObject(r, "to", Hm(tr.to).c_str());
         cJSON_AddItemToArray(ranges, r);
     }
+    cJSON* weather = cJSON_AddObjectToObject(root, "weather");
+    cJSON_AddBoolToObject(weather, "on", c.weather_on);
+    cJSON_AddStringToObject(weather, "place", c.weather_place.c_str());
     cJSON* items = cJSON_AddArrayToObject(root, "items");
     for (const Item& item : c.items) {
         cJSON* it = cJSON_CreateObject();

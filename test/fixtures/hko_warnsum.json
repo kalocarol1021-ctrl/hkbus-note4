@@ -1,0 +1,4 @@
+{"WFIRE":{"name":"火災危險警告","code":"WFIREY","type":"黃色","actionCode":"CANCEL","issueTime":"2026-10-24T06:45:00+08:00","updateTime":"2026-10-24T16:45:00+08:00"},
+"WRAIN":{"name":"暴雨警告信號","code":"WRAINA","type":"黃色","actionCode":"ISSUE","issueTime":"2026-10-24T21:40:00+08:00","updateTime":"2026-10-24T21:40:00+08:00"},
+"WTS":{"name":"雷暴警告","code":"WTS","actionCode":"EXTEND","issueTime":"2026-10-24T20:00:00+08:00","expireTime":"2026-10-25T01:00:00+08:00","updateTime":"2026-10-24T22:50:00+08:00"},
+"WTCSGNL":{"name":"熱帶氣旋警告信號","code":"TC8NE","type":"八號東北烈風或暴風信號","actionCode":"ISSUE","issueTime":"2026-10-24T19:40:00+08:00","updateTime":"2026-10-24T19:40:00+08:00"}}

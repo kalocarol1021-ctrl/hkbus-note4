@@ -10,7 +10,7 @@ endif()
 set(CORE ${CMAKE_CURRENT_LIST_DIR}/../components/hkbus_core)
 
 add_library(hkcore STATIC
-  ${CORE}/hk_fb.cc ${CORE}/hk_font.cc ${CORE}/hk_model.cc ${CORE}/hk_screen.cc
+  ${CORE}/hk_fb.cc ${CORE}/hk_font.cc ${CORE}/hk_model.cc ${CORE}/hk_screen.cc ${CORE}/hk_weather.cc
   ${CORE}/third_party/qrcodegen.c ${CJSON_DIR}/cJSON.c)
 target_include_directories(hkcore PUBLIC ${CORE}/include ${CORE}/third_party ${CJSON_DIR})
 target_compile_options(hkcore PRIVATE -Wall -Wextra -Wno-unused-parameter)

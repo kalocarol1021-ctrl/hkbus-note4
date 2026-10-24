@@ -134,6 +134,13 @@ details summary{cursor:pointer;font-weight:700;min-height:32px}
     <div><label for="cycle">自動換頁</label>
       <select id="cycle"><option value="0">不自動換頁</option><option value="10">每 10 秒</option><option value="15">每 15 秒</option><option value="20">每 20 秒</option><option value="30">每 30 秒</option><option value="60">每 60 秒</option></select></div>
   </div>
+  <label><input type="checkbox" id="wxOn" style="width:auto;min-height:0;vertical-align:middle"> 顯示天文台氣溫、天氣及警告（風球、暴雨等）</label>
+  <div id="wxBox">
+    <label for="wxPlace">氣溫地點（天文台氣溫站）</label>
+    <select id="wxPlace"></select>
+    <p class="hint">開啟後，螢幕左上角會顯示地點氣溫及天氣（代替螢幕標題）；有風球、暴雨、雷暴等警告時，標題下方會加一行警告，八號風球及紅／黑雨會用黑底突出顯示。白石角一帶可選「大埔」。</p>
+    <p class="hint" id="wxNow"></p>
+  </div>
   <label><input type="checkbox" id="hoursOn" style="width:auto;min-height:0;vertical-align:middle"> 只在指定時段顯示（其他時間休息，慳電）</label>
   <div id="hoursBox" class="hide">
     <p class="hint">例如長者早上及下午出門的時間。時段以外按顯示屏的 Home 鍵，可臨時顯示 10 分鐘。</p>
@@ -211,6 +218,7 @@ async function loadState(first){
   if(first){ wifiPanel($("#normalWifi")); }
   if(!dirty){ cfg=JSON.parse(JSON.stringify(s.config)); fillSettings(); }
   renderItems();
+  showWeatherNow(s.weather);
   refreshShot();
 }
 function refreshShot(){ $("#shot").src="/screen.bmp?k="+encodeURIComponent(accessKey)+"&t="+Date.now() }
@@ -229,6 +237,7 @@ function fillSettings(){
   $("#title").value=cfg.title||"";
   $("#rows").value=String(cfg.rows||4);
   $("#cycle").value=String(cfg.cycle||0);
+  fillWeather();
   if(!cfg.hours) cfg.hours={on:false,ranges:[]};
   $("#hoursOn").checked=!!cfg.hours.on;
   renderRanges();
@@ -238,6 +247,24 @@ function fillSettings(){
   cfg.title=$("#title").value.trim(); cfg.rows=+$("#rows").value; cfg.cycle=+$("#cycle").value;
   $("#perPageTxt").textContent=cfg.rows; renderItems(); setDirty(true);
 }));
+// Weather (Hong Kong Observatory temperature stations).
+const HKO_PLACES=["香港天文台","京士柏","黃竹坑","打鼓嶺","流浮山","大埔","沙田","屯門","將軍澳","西貢","長洲","赤鱲角","青衣","石崗","荃灣可觀","荃灣城門谷","香港公園","筲箕灣","九龍城","跑馬地","黃大仙","赤柱","觀塘","深水埗","啟德跑道公園","元朗公園","大美督"];
+$("#wxPlace").innerHTML=HKO_PLACES.map(p=>`<option>${p}</option>`).join("");
+function fillWeather(){
+  if(!cfg.weather) cfg.weather={on:true,place:"香港天文台"};
+  $("#wxOn").checked=!!cfg.weather.on; $("#wxPlace").value=cfg.weather.place||"香港天文台";
+  $("#wxBox").classList.toggle("hide",!cfg.weather.on);
+}
+["wxOn","wxPlace"].forEach(id=>$("#"+id).addEventListener("input",()=>{
+  cfg.weather={on:$("#wxOn").checked,place:$("#wxPlace").value}; $("#wxBox").classList.toggle("hide",!cfg.weather.on); setDirty(true);
+}));
+function showWeatherNow(w){
+  if(!w){ $("#wxNow").textContent=""; return }
+  let t=w.ok?("目前："+w.place+" "+w.temp+"°C "+(w.desc||"")):"未有天氣資料（儲存後數分鐘內更新）";
+  if(w.warnings&&w.warnings.length) t+="　生效中的警告："+w.warnings.join("、");
+  $("#wxNow").textContent=t;
+}
+
 // Display hours: up to three daily windows.
 function renderRanges(){
   const on=$("#hoursOn").checked;
