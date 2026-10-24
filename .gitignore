@@ -1,0 +1,10 @@
+/build/
+/sdkconfig
+/sdkconfig.old
+/managed_components/
+!main/fonts/*.bin
+.DS_Store
+__pycache__/
+*.py[cod]
+/build-host/
+/site/

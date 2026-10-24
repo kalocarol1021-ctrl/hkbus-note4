@@ -1,0 +1,3 @@
+{"type":"ETA","version":"1.0","generated_timestamp":"2026-10-25T02:13:05+08:00","data":[
+{"co":"KMB","route":"1","dir":"O","service_type":1,"seq":4,"dest_tc":"尖沙咀碼頭","dest_sc":"尖沙咀码头","dest_en":"STAR FERRY","eta_seq":1,"eta":null,"rmk_tc":"最後班次已過","rmk_sc":"最后班次已过","rmk_en":"Final bus has departed from this stop","data_timestamp":"2026-10-25T02:12:51+08:00"}
+]}

@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  host-tests:
+    name: Parser and layout tests (PC)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get cJSON
+        run: git clone --depth 1 --branch v1.7.18 https://github.com/DaveGamble/cJSON.git /tmp/cJSON
+      - name: Build and run tests
+        run: |
+          cmake -S test -B build-host -DCJSON_DIR=/tmp/cJSON
+          cmake --build build-host
+          ./build-host/hk_host_test test/fixtures
+          ./build-host/hk_preview main/fonts /tmp/screen
+
+  firmware:
+    name: Build firmware (ESP-IDF 5.5.2)
+    runs-on: ubuntu-latest
+    container: espressif/idf:v5.5.2
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        shell: bash
+        run: |
+          . $IDF_PATH/export.sh
+          idf.py set-target esp32s3
+          idf.py build

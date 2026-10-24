@@ -1,0 +1,4 @@
+{"type":"ETA","version":"2.0","generated_timestamp":"2026-10-24T17:13:02+08:00","data":[
+{"co":"CTB","route":"101","dir":"O","seq":5,"stop":"001081","dest_tc":"觀塘(裕民坊)","dest_sc":"观塘(裕民坊)","dest_en":"Kwun Tong (Yue Man Square)","eta_seq":1,"eta":"2026-10-24T17:19:30+08:00","rmk_tc":"","rmk_sc":"","rmk_en":"","data_timestamp":"2026-10-24T17:12:40+08:00"},
+{"co":"CTB","route":"101","dir":"O","seq":5,"stop":"001081","dest_tc":"觀塘(裕民坊)","dest_sc":"观塘(裕民坊)","dest_en":"Kwun Tong (Yue Man Square)","eta_seq":2,"eta":"","rmk_tc":"","rmk_sc":"","rmk_en":"","data_timestamp":"2026-10-24T17:12:40+08:00"}
+]}

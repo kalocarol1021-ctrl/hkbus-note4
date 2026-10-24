@@ -1,0 +1,4 @@
+{"type":"ETA","version":"1.0","generated_timestamp":"2026-10-24T17:13:05+08:00","data":[
+{"co":"KMB","route":"101","dir":"I","service_type":1,"seq":4,"dest_tc":"觀塘(裕民坊)","dest_sc":"","dest_en":"","eta_seq":1,"eta":"2026-10-24T17:13:20+08:00","rmk_tc":"","rmk_sc":"","rmk_en":"","data_timestamp":"2026-10-24T17:12:51+08:00"},
+{"co":"KMB","route":"101","dir":"I","service_type":1,"seq":4,"dest_tc":"觀塘(裕民坊)","dest_sc":"","dest_en":"","eta_seq":2,"eta":"2026-10-24T17:30:00+08:00","rmk_tc":"","rmk_sc":"","rmk_en":"","data_timestamp":"2026-10-24T17:12:51+08:00"}
+]}

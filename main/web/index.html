@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="zh-HK">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>巴士到站顯示屏設定</title>
+<style>
+:root{--bg:#f6f4ef;--card:#fff;--ink:#16181b;--mute:#6b6f76;--line:#e3e0d8;--acc:#b5121b;--acc2:#1d6b3a;--warn:#a15c00;--r:14px}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.5 -apple-system,"PingFang HK","Noto Sans HK","Microsoft JhengHei",sans-serif;padding:0 0 96px}
+header{background:var(--ink);color:#fff;padding:14px 16px calc(14px);position:sticky;top:0;z-index:5}
+header h1{margin:0;font-size:19px;font-weight:700;letter-spacing:.5px}
+header .st{font-size:13px;opacity:.75;margin-top:2px}
+main{max-width:640px;margin:0 auto;padding:12px 14px}
+section{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin:0 0 14px}
+h2{font-size:17px;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+h2 .n{background:var(--ink);color:#fff;border-radius:99px;font-size:12px;padding:1px 8px}
+p.hint{color:var(--mute);font-size:14px;margin:6px 0 10px}
+button,.btn{font:inherit;border:1px solid var(--ink);background:#fff;color:var(--ink);border-radius:10px;padding:9px 14px;min-height:44px;cursor:pointer}
+button.pri{background:var(--ink);color:#fff}
+button.acc{background:var(--acc);border-color:var(--acc);color:#fff}
+button.sm{min-height:36px;padding:4px 10px;font-size:15px}
+button:disabled{opacity:.45}
+input,select{font:inherit;width:100%;padding:10px 12px;border:1px solid #bdb9ae;border-radius:10px;background:#fff;min-height:44px}
+label{display:block;font-size:14px;color:var(--mute);margin:10px 0 4px}
+.row{display:flex;gap:8px;align-items:center}
+.row>*{flex:1}
+.row>.fit{flex:0 0 auto}
+.row>div{min-width:0}
+input[type=time]{min-width:0;padding:10px 8px}
+.preview{width:100%;image-rendering:pixelated;border:1px solid var(--line);border-radius:8px;background:#fff;aspect-ratio:4/3;display:block}
+.item{display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
+.item:first-child{border-top:0}
+.badge{flex:0 0 auto;min-width:62px;text-align:center;font-weight:800;font-size:20px;background:var(--ink);color:#fff;border-radius:9px;padding:5px 8px}
+.badge.gmb{background:#fff;color:var(--acc2);border:3px solid var(--acc2);padding:2px 5px}
+.meta{flex:1;min-width:0}
+.meta b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta small{color:var(--mute);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.eta{flex:0 0 auto;text-align:right;font-weight:700;font-size:15px;color:var(--acc2)}
+.ops{grid-column:1/-1;display:flex;gap:6px;justify-content:flex-end}
+.edit{background:#faf9f6;border-radius:10px;padding:10px;margin:-2px 0 8px}
+.tabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.tabs button{flex:1;min-width:90px}
+.tabs button.on{background:var(--ink);color:#fff}
+.list{max-height:420px;overflow:auto;border:1px solid var(--line);border-radius:10px}
+.opt{display:block;width:100%;text-align:left;border:0;border-top:1px solid var(--line);border-radius:0;background:#fff;padding:10px 12px;min-height:52px}
+.opt:first-child{border-top:0}
+.opt:active{background:#f0eee8}
+.opt .r{font-weight:800;margin-right:8px}
+.opt small{color:var(--mute)}
+.co{font-size:12px;border:1px solid var(--mute);color:var(--mute);border-radius:6px;padding:0 5px;margin-left:6px;white-space:nowrap}
+.chk{display:flex;gap:10px;align-items:center;padding:10px 12px;border-top:1px solid var(--line)}
+.chk:first-child{border-top:0}
+.chk input{width:22px;height:22px;min-height:0;flex:0 0 auto}
+.save{position:fixed;left:0;right:0;bottom:0;background:rgba(246,244,239,.96);border-top:1px solid var(--line);padding:10px 14px calc(10px + env(safe-area-inset-bottom));z-index:6}
+.save .in{max-width:640px;margin:0 auto;display:flex;gap:10px;align-items:center}
+.save .msg{flex:1;font-size:14px;color:var(--mute)}
+.dirty .save .msg{color:var(--warn);font-weight:700}
+.toast{position:fixed;left:50%;top:70px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:99px;font-size:15px;z-index:9;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:1}
+.empty{color:var(--mute);text-align:center;padding:18px 0}
+.wifi .opt{display:flex;justify-content:space-between}
+.hide{display:none!important}
+.prog{height:6px;background:var(--line);border-radius:99px;overflow:hidden;margin:8px 0}
+.prog i{display:block;height:100%;width:0;background:var(--acc);transition:width .2s}
+details summary{cursor:pointer;font-weight:700;min-height:32px}
+</style>
+</head>
+<body>
+<header><h1>巴士到站顯示屏</h1><div class="st" id="status">連接中…</div></header>
+<main>
+
+<!-- Set-up network: Wi-Fi only -->
+<section id="codeBox" class="hide">
+  <h2>請輸入設定碼</h2>
+  <p class="hint">為免同一 Wi-Fi 內其他人更改設定，需要輸入設定碼。長按顯示屏的 Home 鍵 1.5 秒，畫面會顯示 6 位設定碼及 QR Code（掃描 QR Code 不用輸入）。</p>
+  <div class="row"><input id="codeInput" maxlength="6" autocapitalize="characters" autocomplete="off" placeholder="例如 7KX2PQ"><button class="pri fit" id="codeOk">確定</button></div>
+</section>
+
+<section id="setupBox" class="hide">
+  <h2>第一步：連接家中 Wi-Fi</h2>
+  <p class="hint">選擇家中的 Wi-Fi 及輸入密碼。儲存後顯示屏會重新啟動並連接，螢幕會顯示設定網址。</p>
+  <div id="setupWifi"></div>
+</section>
+
+<div id="normal" class="hide">
+<section>
+  <h2>螢幕預覽</h2>
+  <img id="shot" class="preview" alt="螢幕預覽">
+  <div class="row" style="margin-top:10px">
+    <button id="btnRefresh">立即更新到站時間</button>
+  </div>
+</section>
+
+<section>
+  <h2>顯示的路線 <span class="n" id="count">0</span></h2>
+  <p class="hint">每頁顯示 <span id="perPageTxt">4</span> 條路線，多過一頁可用顯示屏側面的音量＋／－鍵翻頁，或在下面設定自動換頁。</p>
+  <div id="items"></div>
+</section>
+
+<section>
+  <h2>加入路線</h2>
+  <div class="tabs" id="tabs">
+    <button data-t="route" class="on">路線號碼</button>
+    <button data-t="stop">車站名稱</button>
+    <button data-t="link">hkbus.app 連結</button>
+  </div>
+  <div id="dbState" class="hint"></div>
+  <div class="prog hide" id="prog"><i></i></div>
+
+  <div data-p="route">
+    <input id="qRoute" placeholder="輸入路線號碼，例如 1A、101、11M" autocomplete="off" autocapitalize="characters" inputmode="text">
+    <div id="routeResults" style="margin-top:10px"></div>
+  </div>
+  <div data-p="stop" class="hide">
+    <input id="qStop" placeholder="輸入車站名稱，例如 樂富中心" autocomplete="off">
+    <div id="stopResults" style="margin-top:10px"></div>
+  </div>
+  <div data-p="link" class="hide">
+    <p class="hint">在 hkbus.app 打開路線並揀選車站，然後複製網址貼在這裡。</p>
+    <input id="qLink" placeholder="https://hkbus.app/zh/route/…" autocomplete="off">
+    <div class="row" style="margin-top:10px"><button class="pri" id="btnLink">加入</button></div>
+  </div>
+</section>
+
+<section>
+  <h2>顯示設定</h2>
+  <label for="title">螢幕標題</label>
+  <input id="title" maxlength="20" placeholder="例如：樂富中心（留空顯示「巴士到站時間」）">
+  <div class="row">
+    <div><label for="rows">每頁路線數目</label>
+      <select id="rows"><option value="3">3 條（字更大）</option><option value="4">4 條</option></select></div>
+    <div><label for="cycle">自動換頁</label>
+      <select id="cycle"><option value="0">不自動換頁</option><option value="10">每 10 秒</option><option value="15">每 15 秒</option><option value="20">每 20 秒</option><option value="30">每 30 秒</option><option value="60">每 60 秒</option></select></div>
+  </div>
+  <label><input type="checkbox" id="hoursOn" style="width:auto;min-height:0;vertical-align:middle"> 只在指定時段顯示（其他時間休息，慳電）</label>
+  <div id="hoursBox" class="hide">
+    <p class="hint">例如長者早上及下午出門的時間。時段以外按顯示屏的 Home 鍵，可臨時顯示 10 分鐘。</p>
+    <div id="ranges"></div>
+    <div class="row" style="margin-top:8px"><button class="fit sm" id="addRange">＋ 加一個時段</button></div>
+  </div>
+</section>
+
+<section>
+  <h2>固件更新</h2>
+  <p class="hint" id="fwInfo">目前版本：—</p>
+  <div class="row"><button class="fit" id="btnCheck">檢查更新</button><button class="pri fit hide" id="btnInstall">更新並保留設定</button></div>
+  <div class="prog hide" id="fwProg"><i></i></div>
+  <p class="hint" id="fwMsg"></p>
+</section>
+
+<section>
+  <details>
+    <summary>Wi-Fi 及裝置資料</summary>
+    <p class="hint" id="devInfo"></p>
+    <p class="hint">更換 Wi-Fi：選擇新的網絡並輸入密碼，顯示屏會重新啟動。</p>
+    <div id="normalWifi"></div>
+  </details>
+</section>
+</div>
+</main>
+
+<div class="save" id="saveBar"><div class="in">
+  <div class="msg" id="saveMsg">所有改動已儲存</div>
+  <button class="acc" id="btnSave" disabled>儲存到顯示屏</button>
+</div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const CO_ORDER=["kmb","ctb","nlb","lrtfeeder","gmb"];
+const CO_NAME={kmb:"九巴",ctb:"城巴",gmb:"專線小巴",nlb:"新大嶼山巴士",lrtfeeder:"港鐵巴士"};
+const SUPPORTED=Object.keys(CO_NAME);
+const DB_URLS=["https://data.hkbus.app/routeFareList.min.json","https://hkbus.github.io/hk-bus-crawling/routeFareList.min.json"];
+const MD5_URLS=["https://data.hkbus.app/routeFareList.md5","https://hkbus.github.io/hk-bus-crawling/routeFareList.md5"];
+let state=null, cfg=null, dirty=false, db=null, dbLoading=null, editing=-1;
+// Settings code: from the QR code link (?k=) or typed in; remembered on this phone.
+let accessKey=(new URLSearchParams(location.search).get("k")||"").toUpperCase();
+try{ if(accessKey) localStorage.setItem("hkbus_key",accessKey); else accessKey=localStorage.getItem("hkbus_key")||"" }catch(e){}
+if(location.search) history.replaceState(null,"",location.pathname);
+
+function toast(t){const e=$("#toast");e.textContent=t;e.classList.add("on");clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove("on"),2200)}
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function setDirty(v){dirty=v;document.body.classList.toggle("dirty",v);$("#btnSave").disabled=!v;$("#saveMsg").textContent=v?"有改動未儲存":"所有改動已儲存"}
+async function api(path,body){
+  const h={"X-Key":accessKey};
+  const r=await fetch(path,body===undefined?{cache:"no-store",headers:h}:{method:"POST",headers:{...h,"Content-Type":"application/json"},body:JSON.stringify(body)});
+  const j=await r.json().catch(()=>({}));
+  if(r.status===401){ showCodeBox(); throw new Error("需要設定碼") }
+  if(!r.ok||j.ok===false) throw new Error(j.error||("HTTP "+r.status));
+  return j;
+}
+
+// ---------- device state ----------
+async function loadState(first){
+  try{ state=await api("/api/state") }catch(e){ if(e.message!=="需要設定碼") $("#status").textContent="未能連接顯示屏"; return false }
+  $("#codeBox").classList.add("hide");
+  const s=state;
+  $("#status").textContent = s.mode==="setup" && !s.connected ? "設定模式 · "+s.ap_ssid
+    : (s.connected?("已連接 "+s.ssid+" · "+s.ip):"Wi-Fi 未連接");
+  $("#fwInfo").textContent="目前版本："+(s.version||"—");
+  if(s.update&&s.update.state!=="idle") showUpdateState(s.update);
+  $("#devInfo").innerHTML="版本 "+esc(s.version)+"<br>Wi-Fi："+esc(s.ssid||"未設定")+(s.connected?"（訊號 "+s.rssi+" dBm）":"")+"<br>網址：http://"+esc(s.ip||"192.168.4.1")+"/";
+  const setupOnly = s.mode==="setup" && !s.connected;
+  $("#setupBox").classList.toggle("hide",!setupOnly);
+  $("#normal").classList.toggle("hide",setupOnly);
+  $("#saveBar").classList.toggle("hide",setupOnly);
+  if(setupOnly){ if(first) wifiPanel($("#setupWifi")); return }
+  if(first){ wifiPanel($("#normalWifi")); }
+  if(!dirty){ cfg=JSON.parse(JSON.stringify(s.config)); fillSettings(); }
+  renderItems();
+  refreshShot();
+}
+function refreshShot(){ $("#shot").src="/screen.bmp?k="+encodeURIComponent(accessKey)+"&t="+Date.now() }
+function showCodeBox(){
+  $("#status").textContent="需要設定碼";
+  ["#normal","#setupBox","#saveBar"].forEach(x=>$(x).classList.add("hide"));
+  $("#codeBox").classList.remove("hide");
+}
+$("#codeOk").onclick=async()=>{
+  accessKey=$("#codeInput").value.trim().toUpperCase();
+  try{ localStorage.setItem("hkbus_key",accessKey) }catch(e){}
+  if(await loadState(true)!==false && state){ toast("設定碼正確"); loadDb().catch(()=>{}) } else toast("設定碼不正確");
+};
+
+function fillSettings(){
+  $("#title").value=cfg.title||"";
+  $("#rows").value=String(cfg.rows||4);
+  $("#cycle").value=String(cfg.cycle||0);
+  if(!cfg.hours) cfg.hours={on:false,ranges:[]};
+  $("#hoursOn").checked=!!cfg.hours.on;
+  renderRanges();
+  $("#perPageTxt").textContent=cfg.rows||4;
+}
+["title","rows","cycle"].forEach(id=>$("#"+id).addEventListener("input",()=>{
+  cfg.title=$("#title").value.trim(); cfg.rows=+$("#rows").value; cfg.cycle=+$("#cycle").value;
+  $("#perPageTxt").textContent=cfg.rows; renderItems(); setDirty(true);
+}));
+// Display hours: up to three daily windows.
+function renderRanges(){
+  const on=$("#hoursOn").checked;
+  $("#hoursBox").classList.toggle("hide",!on);
+  if(on&&!cfg.hours.ranges.length) cfg.hours.ranges=[{from:"07:00",to:"10:00"},{from:"16:00",to:"19:00"}];
+  $("#ranges").innerHTML=cfg.hours.ranges.map((r,i)=>`<div class="row" style="margin-top:6px">
+    <div><label>由</label><input type="time" data-r="${i}" data-f="from" value="${esc(r.from)}"></div>
+    <div><label>至</label><input type="time" data-r="${i}" data-f="to" value="${esc(r.to)}"></div>
+    <button class="fit sm" data-del="${i}" style="align-self:flex-end" ${cfg.hours.ranges.length<2?"disabled":""}>刪除</button></div>`).join("");
+  $("#addRange").disabled=cfg.hours.ranges.length>=3;
+}
+$("#hoursOn").addEventListener("input",()=>{ cfg.hours.on=$("#hoursOn").checked; renderRanges(); setDirty(true) });
+$("#ranges").addEventListener("input",e=>{ const t=e.target; if(t.dataset.r===undefined) return;
+  cfg.hours.ranges[+t.dataset.r][t.dataset.f]=t.value; setDirty(true) });
+$("#ranges").addEventListener("click",e=>{ const b=e.target.closest("[data-del]"); if(!b) return;
+  cfg.hours.ranges.splice(+b.dataset.del,1); renderRanges(); setDirty(true) });
+$("#addRange").onclick=()=>{ if(cfg.hours.ranges.length<3){ cfg.hours.ranges.push({from:"12:00",to:"14:00"}); renderRanges(); setDirty(true) } };
+
+function etaText(i){
+  if(dirty||!state||!state.rows[i]) return "";
+  const r=state.rows[i];
+  if(r.stale) return "資料未更新";
+  if(r.mins&&r.mins.length) return r.mins.slice(0,3).map(m=>m===0?"即將":m+"分").join(" · ");
+  if(r.remark) return r.remark;
+  return r.failed?"連線失敗":(r.loaded?"暫無班次":"");
+}
+function renderItems(){
+  const box=$("#items"); const items=cfg?cfg.items:[];
+  $("#count").textContent=items.length;
+  if(!items.length){ box.innerHTML='<div class="empty">未有路線，請在下面「加入路線」。</div>'; return }
+  const per=cfg.rows||4;
+  box.innerHTML=items.map((it,i)=>{
+    const page=Math.floor(i/per)+1;
+    const head = i%per===0 && items.length>per ? `<div class="hint" style="margin:10px 0 0;font-weight:700">第 ${page} 頁</div>`:"";
+    const ed = editing===i ? `<div class="edit">
+        <label>目的地（顯示在「往」之後）</label><input data-f="dest" data-i="${i}" value="${esc(it.dest)}" maxlength="30">
+        <label>車站名稱</label><input data-f="name" data-i="${i}" value="${esc(it.name)}" maxlength="30">
+        <div class="row" style="margin-top:10px"><button class="sm" data-a="done" data-i="${i}">完成</button></div></div>`:"";
+    return head+`<div class="item">
+      <div class="badge ${it.co[0]==="gmb"?"gmb":""}">${esc(it.route)}</div>
+      <div class="meta"><b>往 ${esc(it.dest)}</b><small>${esc(it.name)} · ${it.co.map(c=>CO_NAME[c]||c).join("+")}</small></div>
+      <div class="eta">${esc(etaText(i))}</div><div class="ops">
+        <button class="sm" data-a="up" data-i="${i}" ${i===0?"disabled":""} aria-label="上移">↑</button>
+        <button class="sm" data-a="down" data-i="${i}" ${i===items.length-1?"disabled":""} aria-label="下移">↓</button>
+        <button class="sm" data-a="edit" data-i="${i}">改名</button>
+        <button class="sm" data-a="del" data-i="${i}">刪除</button></div>
+    </div>`+ed;
+  }).join("");
+}
+$("#items").addEventListener("click",e=>{
+  const b=e.target.closest("button[data-a]"); if(!b) return;
+  const i=+b.dataset.i, a=b.dataset.a, it=cfg.items;
+  if(a==="up"&&i>0){[it[i-1],it[i]]=[it[i],it[i-1]];editing=-1}
+  else if(a==="down"&&i<it.length-1){[it[i+1],it[i]]=[it[i],it[i+1]];editing=-1}
+  else if(a==="del"){ if(!confirm("刪除路線 "+it[i].route+"？")) return; it.splice(i,1); editing=-1 }
+  else if(a==="edit"){ editing=editing===i?-1:i; renderItems(); return }
+  else if(a==="done"){ editing=-1; renderItems(); return }
+  setDirty(true); renderItems();
+});
+$("#items").addEventListener("input",e=>{
+  const t=e.target; if(!t.dataset.f) return;
+  cfg.items[+t.dataset.i][t.dataset.f]=t.value; setDirty(true);
+});
+
+$("#btnSave").onclick=async()=>{
+  const b=$("#btnSave"); b.disabled=true; b.textContent="儲存中…";
+  try{
+    await api("/api/config",cfg); setDirty(false); editing=-1; toast("已儲存，顯示屏更新中");
+    setTimeout(()=>loadState(false),5000);
+  }catch(e){ toast("儲存失敗："+e.message); b.disabled=false }
+  b.textContent="儲存到顯示屏";
+};
+$("#btnRefresh").onclick=async()=>{
+  try{ await api("/api/refresh",{}); toast("正在更新…"); setTimeout(()=>loadState(false),5000) }catch(e){ toast(e.message) }
+};
+window.addEventListener("beforeunload",e=>{ if(dirty){ e.preventDefault(); e.returnValue="" } });
+
+// ---------- firmware update ----------
+let updatePoll=null;
+function showUpdateState(u){
+  if(!u) return;
+  const bar=$("#fwProg");
+  if(u.state==="running"||u.state==="done"){
+    bar.classList.remove("hide"); bar.querySelector("i").style.width=(u.progress||0)+"%";
+    $("#fwMsg").textContent=u.state==="done"?"更新完成，顯示屏正在重新啟動，約 30 秒後重新整理此頁。":"正在下載及安裝："+(u.progress||0)+"%（請勿拔走電源）";
+    $("#btnInstall").classList.add("hide"); $("#btnCheck").disabled=true;
+  } else if(u.state==="failed"){
+    bar.classList.add("hide"); $("#fwMsg").textContent="更新失敗："+(u.error||"")+"。顯示屏會繼續使用目前版本。"; $("#btnCheck").disabled=false;
+    clearInterval(updatePoll); updatePoll=null;
+  }
+}
+$("#btnCheck").onclick=async()=>{
+  const b=$("#btnCheck"); b.disabled=true; b.textContent="檢查中…"; $("#fwMsg").textContent="";
+  try{
+    const r=await fetch("/api/update/check",{headers:{"X-Key":accessKey}}).then(x=>x.json());
+    if(!r.ok){ $("#fwMsg").textContent=r.error||"未能檢查更新" }
+    else if(r.available){ $("#fwMsg").innerHTML="有新版本 <b>"+esc(r.latest)+"</b>（目前 "+esc(r.current)+"）"+(r.notes?"<br>"+esc(r.notes):""); $("#btnInstall").classList.remove("hide") }
+    else { $("#fwMsg").textContent="已經是最新版本（"+r.current+"）"; $("#btnInstall").classList.add("hide") }
+  }catch(e){ $("#fwMsg").textContent="未能檢查更新" }
+  b.disabled=false; b.textContent="檢查更新";
+};
+$("#btnInstall").onclick=async()=>{
+  if(!confirm("更新期間約 1–2 分鐘，顯示屏會顯示進度，完成後自動重新啟動。路線及 Wi-Fi 設定會保留。開始更新？")) return;
+  try{ await api("/api/update/install",{}); showUpdateState({state:"running",progress:0});
+    updatePoll=setInterval(async()=>{ try{ const s=await api("/api/state"); showUpdateState(s.update) }catch(e){ /* restarting */ } },2000);
+  }catch(e){ $("#fwMsg").textContent="未能開始更新："+e.message }
+};
+
+// ---------- Wi-Fi ----------
+function wifiPanel(box){
+  box.innerHTML=`<div class="row"><button class="fit" data-w="scan">搜尋 Wi-Fi</button></div>
+  <div class="list wifi hide" style="margin-top:10px" data-w="list"></div>
+  <label>Wi-Fi 名稱</label><input data-w="ssid" autocomplete="off" autocapitalize="none">
+  <label>密碼</label><input data-w="pass" type="password" autocomplete="off">
+  <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" data-w="show" style="width:auto;min-height:0"> 顯示密碼</label>
+  <div class="row" style="margin-top:10px"><button class="pri" data-w="save">儲存並連接</button></div>`;
+  const q=s=>box.querySelector(`[data-w="${s}"]`);
+  q("show").onchange=()=>{ q("pass").type=q("show").checked?"text":"password" };
+  q("scan").onclick=async()=>{
+    q("scan").disabled=true; q("scan").textContent="搜尋中…";
+    try{
+      const list=await api("/api/scan"); const l=q("list"); l.classList.remove("hide");
+      l.innerHTML=list.length?list.map(w=>`<button class="opt" data-s="${esc(w.ssid)}"><span>${esc(w.ssid)}</span><small>${w.secure?"🔒 ":""}${w.rssi>-60?"訊號強":w.rssi>-75?"訊號中":"訊號弱"}</small></button>`).join(""):'<div class="empty">找不到 Wi-Fi</div>';
+      l.onclick=e=>{const o=e.target.closest(".opt"); if(o){ q("ssid").value=o.dataset.s; q("pass").focus() }};
+    }catch(e){ toast("搜尋失敗") }
+    q("scan").disabled=false; q("scan").textContent="重新搜尋";
+  };
+  q("save").onclick=async()=>{
+    const ssid=q("ssid").value.trim(); if(!ssid){ toast("請輸入 Wi-Fi 名稱"); return }
+    if(!confirm("儲存後顯示屏會重新啟動並連接「"+ssid+"」。繼續？")) return;
+    try{ await api("/api/wifi",{ssid,pass:q("pass").value});
+      box.innerHTML='<p><b>已儲存。</b>顯示屏正在重新啟動。請把手機連回家中 Wi-Fi，然後掃描顯示屏上的 QR Code 開啟設定頁。</p>';
+    }catch(e){ toast("儲存失敗："+e.message) }
+  };
+}
+
+// ---------- hkbus.app route database ----------
+function idb(){ return new Promise((res,rej)=>{ const r=indexedDB.open("hkbus-board",1);
+  r.onupgradeneeded=()=>r.result.createObjectStore("kv"); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error) }) }
+async function idbGet(k){ try{ const d=await idb(); return await new Promise(res=>{ const q=d.transaction("kv").objectStore("kv").get(k); q.onsuccess=()=>res(q.result); q.onerror=()=>res(undefined) }) }catch(e){ return undefined } }
+async function idbPut(k,v){ try{ const d=await idb(); d.transaction("kv","readwrite").objectStore("kv").put(v,k) }catch(e){} }
+async function firstOk(urls,asText){
+  let last; for(const u of urls){ try{ const r=await fetch(u,{cache:"no-store"}); if(r.ok) return asText?await r.text():r; last=new Error("HTTP "+r.status) }catch(e){ last=e } } throw last;
+}
+async function fetchWithProgress(urls){
+  const r=await firstOk(urls,false);
+  const total=+r.headers.get("Content-Length")||0;
+  if(!r.body||!r.body.getReader) return await r.text();
+  const rd=r.body.getReader(), parts=[]; let got=0; const bar=$("#prog i");
+  for(;;){ const {done,value}=await rd.read(); if(done) break; parts.push(value); got+=value.length;
+    bar.style.width=(total?Math.min(100,got/total*100):Math.min(95,got/9e6*100))+"%"; }
+  return await new Blob(parts).text();
+}
+function loadDb(){
+  if(dbLoading) return dbLoading;
+  dbLoading=(async()=>{
+    $("#dbState").textContent="正在載入路線資料…";
+    let md5=""; try{ md5=(await firstOk(MD5_URLS,true)).trim() }catch(e){}
+    const cached=await idbGet("db");
+    let text=null;
+    if(cached&&(cached.md5===md5||!md5)) text=cached.text;
+    if(!text){
+      $("#prog").classList.remove("hide");
+      $("#dbState").textContent="首次使用：下載路線資料（約 8MB）…";
+      try{ text=await fetchWithProgress(DB_URLS) }
+      catch(e){ $("#prog").classList.add("hide");
+        if(cached){ text=cached.text } else { $("#dbState").textContent="未能下載路線資料，請確認手機可以上網，然後重新整理此頁。"; dbLoading=null; throw e } }
+      $("#prog").classList.add("hide");
+      if(md5) idbPut("db",{md5,text});
+    }
+    db=JSON.parse(text);
+    buildStopIndex();
+    $("#dbState").textContent="";
+    return db;
+  })();
+  return dbLoading;
+}
+function cleanStop(n){ return String(n||"").replace(/\s*\([A-Z]{1,3}\d{2,4}\)\s*$/,"").trim() }
+function supportedCos(r){ return r.co.filter(c=>SUPPORTED.includes(c)&&r.stops[c]&&r.stops[c].length) }
+function coLabel(r){ return supportedCos(r).map(c=>CO_NAME[c]).join("+") }
+function routeStops(r){ const c=supportedCos(r)[0]; return c?r.stops[c]:[] }
+function makeItem(key,seq){
+  const r=db.routeList[key]; const cos=supportedCos(r).filter(c=>r.stops[c][seq]);
+  const bound={},stop={}; cos.forEach(c=>{bound[c]=r.bound[c];stop[c]=r.stops[c][seq]});
+  const sid=stop[cos[0]], s=db.stopList[sid];
+  return {route:r.route,st:String(r.serviceType||1),seq,gtfs:String(r.gtfsId||""),nlb:String(r.nlbId||""),
+    co:cos,bound,stop,dest:r.dest.zh,name:cleanStop(s?s.name.zh:"")};
+}
+function addItem(key,seq){
+  if(!cfg) return; const it=makeItem(key,seq);
+  if(!it.co.length){ toast("此路線未支援"); return }
+  if(cfg.items.some(x=>x.route===it.route&&JSON.stringify(x.stop)===JSON.stringify(it.stop))){ toast("已經加入過"); return }
+  if(cfg.items.length>=24){ toast("最多 24 條路線"); return }
+  cfg.items.push(it); setDirty(true); renderItems(); toast("已加入 "+it.route+" 往 "+it.dest+"（記得儲存）");
+}
+
+// Search by route number
+function routeKeys(q){
+  q=q.trim().toUpperCase(); if(!q) return [];
+  return Object.keys(db.routeList).filter(k=>{ const r=db.routeList[k]; return r.route.toUpperCase()===q&&supportedCos(r).length })
+   .sort((a,b)=>{ const A=db.routeList[a],B=db.routeList[b];
+     return (CO_ORDER.indexOf(A.co[0])-CO_ORDER.indexOf(B.co[0]))||(+A.serviceType-+B.serviceType) });
+}
+function showRouteResults(){
+  const q=$("#qRoute").value, box=$("#routeResults");
+  if(!db){ box.innerHTML=""; return }
+  const keys=routeKeys(q);
+  if(!q.trim()){ box.innerHTML=""; return }
+  if(!keys.length){ box.innerHTML='<div class="empty">找不到路線 '+esc(q)+'</div>'; return }
+  box.innerHTML='<p class="hint">選擇方向：</p><div class="list">'+keys.map(k=>{ const r=db.routeList[k];
+    return `<button class="opt" data-k="${esc(k)}"><span class="r">${esc(r.route)}</span>${esc(r.orig.zh)} → <b>${esc(r.dest.zh)}</b><span class="co">${coLabel(r)}</span>${+r.serviceType>1?'<span class="co">特別班</span>':""}</button>` }).join("")+"</div>";
+}
+$("#routeResults").addEventListener("click",e=>{
+  const o=e.target.closest(".opt"); if(!o) return;
+  if(o.dataset.k!==undefined&&o.dataset.s===undefined){
+    const k=o.dataset.k, r=db.routeList[k];
+    $("#routeResults").innerHTML=`<p class="hint"><b>${esc(r.route)} 往 ${esc(r.dest.zh)}</b>：選擇你等車的車站</p><div class="list">`+
+      routeStops(r).map((sid,i)=>`<button class="opt" data-k="${esc(k)}" data-s="${i}"><span class="r">${i+1}.</span>${esc(cleanStop((db.stopList[sid]||{name:{zh:sid}}).name.zh))}</button>`).join("")+
+      `</div><div class="row" style="margin-top:8px"><button class="fit sm" id="backRoutes">← 返回</button></div>`;
+    $("#backRoutes").onclick=showRouteResults;
+  } else if(o.dataset.s!==undefined){ addItem(o.dataset.k,+o.dataset.s); showRouteResults() }
+});
+let tR; $("#qRoute").addEventListener("input",()=>{ clearTimeout(tR); tR=setTimeout(async()=>{ await loadDb().catch(()=>{}); showRouteResults() },250) });
+
+// Search by stop name
+let stopGroups=null;
+function buildStopIndex(){
+  const g=new Map();
+  for(const [id,s] of Object.entries(db.stopList)){
+    const n=cleanStop(s.name.zh); if(!n) continue;
+    const key=n+"|"+Math.round(s.location.lat*200)+"|"+Math.round(s.location.lng*200);
+    if(!g.has(key)) g.set(key,{name:n,ids:new Set(),lat:s.location.lat,lng:s.location.lng});
+    g.get(key).ids.add(id);
+  }
+  stopGroups=[...g.values()];
+}
+function routesAt(ids){
+  const out=[];
+  for(const [k,r] of Object.entries(db.routeList)){
+    const cos=supportedCos(r); if(!cos.length) continue;
+    for(const c of cos){ const st=r.stops[c]; const i=st.findIndex((x,j)=>ids.has(x)&&j<st.length-1); // skip terminus arrivals
+      if(i>=0){ out.push({k,i,r}); break } }
+  }
+  return out.sort((a,b)=>a.r.route.localeCompare(b.r.route,"en",{numeric:true}));
+}
+function showStopResults(){
+  const q=$("#qStop").value.trim(), box=$("#stopResults");
+  if(!db||!q){ box.innerHTML=""; return }
+  const hits=stopGroups.filter(s=>s.name.includes(q)).slice(0,40);
+  if(!hits.length){ box.innerHTML='<div class="empty">找不到車站</div>'; return }
+  box.innerHTML='<div class="list">'+hits.map((s,i)=>{ const rs=routesAt(s.ids);
+    return `<button class="opt" data-g="${stopGroups.indexOf(s)}"><b>${esc(s.name)}</b><br><small>${esc(rs.slice(0,12).map(x=>x.r.route).filter((v,j,a)=>a.indexOf(v)===j).join("、"))}${rs.length>12?"…":""}</small></button>` }).join("")+"</div>";
+}
+$("#stopResults").addEventListener("click",e=>{
+  const o=e.target.closest(".opt[data-g]");
+  if(o){
+    const s=stopGroups[+o.dataset.g], rs=routesAt(s.ids);
+    $("#stopResults").innerHTML=`<p class="hint"><b>${esc(s.name)}</b>：剔選要顯示的路線</p><div class="list">`+
+      rs.map((x,j)=>`<label class="chk"><input type="checkbox" data-k="${esc(x.k)}" data-s="${x.i}"><span><span class="r" style="font-weight:800">${esc(x.r.route)}</span> 往 ${esc(x.r.dest.zh)}<span class="co">${coLabel(x.r)}</span></span></label>`).join("")+
+      `</div><div class="row" style="margin-top:10px"><button class="fit sm" id="backStops">← 返回</button><button class="pri" id="addChecked">加入已選路線</button></div>`;
+    $("#backStops").onclick=showStopResults;
+    $("#addChecked").onclick=()=>{ const c=[...document.querySelectorAll("#stopResults input:checked")];
+      if(!c.length){ toast("請先剔選路線"); return } c.forEach(x=>addItem(x.dataset.k,+x.dataset.s)); showStopResults() };
+  }
+});
+let tS; $("#qStop").addEventListener("input",()=>{ clearTimeout(tS); tS=setTimeout(async()=>{ await loadDb().catch(()=>{}); showStopResults() },300) });
+
+// hkbus.app link: https://hkbus.app/zh/route/<route id>/<stop id>%2C<index>
+$("#btnLink").onclick=async()=>{
+  const v=$("#qLink").value.trim(); if(!v) return;
+  await loadDb().catch(()=>{}); if(!db) return;
+  let path; try{ path=decodeURIComponent(new URL(v).pathname) }catch(e){ toast("網址格式不正確"); return }
+  const m=path.match(/\/route\/([^/]+)(?:\/([^/]+))?/); if(!m){ toast("網址不是 hkbus.app 路線頁"); return }
+  const id=m[1].toUpperCase(), panel=m[2]||"";
+  const key=Object.keys(db.routeList).find(k=>k.toUpperCase()===id);
+  if(!key){ toast("找不到此路線（資料可能已更新）"); return }
+  const r=db.routeList[key]; let seq=0;
+  if(panel.includes(",")){ const [sid,idx]=panel.split(","); let best=1e9;
+    for(const c of Object.keys(r.stops)) r.stops[c].forEach((x,i)=>{ if(x===sid&&Math.abs(i-+idx)<best){best=Math.abs(i-+idx);seq=i} }) }
+  else if(panel) seq=parseInt(panel,10)||0;
+  if(!supportedCos(r).length){ toast("暫不支援港鐵／輕鐵／渡輪"); return }
+  addItem(key,seq); $("#qLink").value="";
+};
+
+// Tabs
+$("#tabs").addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b) return;
+  document.querySelectorAll("#tabs button").forEach(x=>x.classList.toggle("on",x===b));
+  document.querySelectorAll("[data-p]").forEach(p=>p.classList.toggle("hide",p.dataset.p!==b.dataset.t));
+  loadDb().catch(()=>{});
+});
+
+loadState(true).then(ok=>{ if(ok!==false&&state&&!(state.mode==="setup"&&!state.connected)) loadDb().catch(()=>{}) });
+setInterval(()=>{ if(!document.hidden&&!dirty) loadState(false) },30000);
+</script>
+</body>
+</html>

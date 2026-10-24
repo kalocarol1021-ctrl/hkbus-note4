@@ -1,0 +1,4 @@
+{"type":"ETA_route_stop","version":"1.0","generated_timestamp":"2026-10-24T17:13:10.123+08:00","data":[
+{"route_seq":2,"stop_seq":4,"enabled":true,"eta":[{"eta_seq":1,"diff":2,"timestamp":"2026-10-24T17:15:12.000+08:00","remarks_tc":null,"remarks_sc":null,"remarks_en":null},{"eta_seq":2,"diff":11,"timestamp":"2026-10-24T17:24:40.000+08:00","remarks_tc":null,"remarks_sc":null,"remarks_en":null}]},
+{"route_seq":1,"stop_seq":4,"enabled":true,"eta":[{"eta_seq":1,"diff":5,"timestamp":"2026-10-24T17:18:00.000+08:00","remarks_tc":null}]}
+]}

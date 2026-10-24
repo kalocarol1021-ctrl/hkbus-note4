@@ -1,0 +1,11 @@
+menu "Hong Kong bus board"
+
+    config HKBUS_UPDATE_URL
+        string "Firmware update manifest URL"
+        default "https://kalocarol1021-ctrl.github.io/hkbus-note4/firmware/ota.json"
+        help
+            HTTPS address of ota.json published by the release workflow. The
+            settings page offers the update when this file names a newer
+            version than the running firmware.
+
+endmenu
