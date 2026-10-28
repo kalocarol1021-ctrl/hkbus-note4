@@ -53,7 +53,7 @@ EMBED(num58)
 namespace {
 
 constexpr char kTag[] = "hkbus";
-constexpr char kVersion[] = "1.3.0";
+constexpr char kVersion[] = "1.3.1";
 constexpr char kNvsNs[] = "hkbus";
 constexpr int64_t kFetchIntervalUs = 60LL * 1000 * 1000;      // once a minute
 constexpr int64_t kFullRefreshIntervalUs = 30LL * 60 * 1000 * 1000;

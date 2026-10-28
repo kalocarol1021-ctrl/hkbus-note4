@@ -57,6 +57,12 @@ input[type=time]{min-width:0;padding:10px 8px}
 .save .in{max-width:640px;margin:0 auto;display:flex;gap:10px;align-items:center}
 .save .msg{flex:1;font-size:14px;color:var(--mute)}
 .dirty .save .msg{color:var(--warn);font-weight:700}
+.ask{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:20px;z-index:20}
+.ask .card{background:#fff;border-radius:16px;padding:20px;max-width:420px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.25)}
+.ask p{margin:0 0 16px;font-size:17px}
+.ask .row{justify-content:flex-end}
+.msg-ok{color:var(--acc2);font-weight:700}
+.msg-bad{color:var(--acc);font-weight:700}
 .toast{position:fixed;left:50%;top:70px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:99px;font-size:15px;z-index:9;opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.on{opacity:1}
 .empty{color:var(--mute);text-align:center;padding:18px 0}
@@ -173,6 +179,12 @@ details summary{cursor:pointer;font-weight:700;min-height:32px}
   <button class="acc" id="btnSave" disabled>儲存到顯示屏</button>
 </div></div>
 <div class="toast" id="toast"></div>
+<!-- In-page confirmation: the phone's "sign in to network" window ignores
+     the browser's own confirmation box, so this page never uses it. -->
+<div class="ask hide" id="ask" role="dialog" aria-modal="true" aria-labelledby="askMsg"><div class="card">
+  <p id="askMsg"></p>
+  <div class="row"><button class="fit" id="askNo">取消</button><button class="pri fit" id="askOk">確定</button></div>
+</div></div>
 
 <script>
 "use strict";
@@ -188,6 +200,14 @@ let accessKey=(new URLSearchParams(location.search).get("k")||"").toUpperCase();
 try{ if(accessKey) localStorage.setItem("hkbus_key",accessKey); else accessKey=localStorage.getItem("hkbus_key")||"" }catch(e){}
 if(location.search) history.replaceState(null,"",location.pathname);
 
+function ask(message,okText){
+  return new Promise(res=>{
+    $("#askMsg").textContent=message; $("#askOk").textContent=okText||"確定";
+    $("#ask").classList.remove("hide"); $("#askOk").focus();
+    const done=v=>{ $("#ask").classList.add("hide"); $("#askOk").onclick=$("#askNo").onclick=null; res(v) };
+    $("#askOk").onclick=()=>done(true); $("#askNo").onclick=()=>done(false);
+  });
+}
 function toast(t){const e=$("#toast");e.textContent=t;e.classList.add("on");clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove("on"),2200)}
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function setDirty(v){dirty=v;document.body.classList.toggle("dirty",v);$("#btnSave").disabled=!v;$("#saveMsg").textContent=v?"有改動未儲存":"所有改動已儲存"}
@@ -314,12 +334,12 @@ function renderItems(){
     </div>`+ed;
   }).join("");
 }
-$("#items").addEventListener("click",e=>{
+$("#items").addEventListener("click",async e=>{
   const b=e.target.closest("button[data-a]"); if(!b) return;
   const i=+b.dataset.i, a=b.dataset.a, it=cfg.items;
   if(a==="up"&&i>0){[it[i-1],it[i]]=[it[i],it[i-1]];editing=-1}
   else if(a==="down"&&i<it.length-1){[it[i+1],it[i]]=[it[i],it[i+1]];editing=-1}
-  else if(a==="del"){ if(!confirm("刪除路線 "+it[i].route+"？")) return; it.splice(i,1); editing=-1 }
+  else if(a==="del"){ if(!await ask("刪除路線 "+it[i].route+" 往 "+it[i].dest+"？","刪除")) return; it.splice(i,1); editing=-1 }
   else if(a==="edit"){ editing=editing===i?-1:i; renderItems(); return }
   else if(a==="done"){ editing=-1; renderItems(); return }
   setDirty(true); renderItems();
@@ -367,7 +387,7 @@ $("#btnCheck").onclick=async()=>{
   b.disabled=false; b.textContent="檢查更新";
 };
 $("#btnInstall").onclick=async()=>{
-  if(!confirm("更新期間約 1–2 分鐘，顯示屏會顯示進度，完成後自動重新啟動。路線及 Wi-Fi 設定會保留。開始更新？")) return;
+  if(!await ask("更新期間約 1–2 分鐘，顯示屏會顯示進度，完成後自動重新啟動。路線及 Wi-Fi 設定會保留。開始更新？","開始更新")) return;
   try{ await api("/api/update/install",{}); showUpdateState({state:"running",progress:0});
     updatePoll=setInterval(async()=>{ try{ const s=await api("/api/state"); showUpdateState(s.update) }catch(e){ /* restarting */ } },2000);
   }catch(e){ $("#fwMsg").textContent="未能開始更新："+e.message }
@@ -380,7 +400,8 @@ function wifiPanel(box){
   <label>Wi-Fi 名稱</label><input data-w="ssid" autocomplete="off" autocapitalize="none">
   <label>密碼</label><input data-w="pass" type="password" autocomplete="off">
   <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" data-w="show" style="width:auto;min-height:0"> 顯示密碼</label>
-  <div class="row" style="margin-top:10px"><button class="pri" data-w="save">儲存並連接</button></div>`;
+  <div class="row" style="margin-top:10px"><button class="pri" data-w="save">儲存並連接</button></div>
+  <p data-w="msg" role="status" aria-live="polite"></p>`;
   const q=s=>box.querySelector(`[data-w="${s}"]`);
   q("show").onchange=()=>{ q("pass").type=q("show").checked?"text":"password" };
   q("scan").onclick=async()=>{
@@ -393,11 +414,20 @@ function wifiPanel(box){
     q("scan").disabled=false; q("scan").textContent="重新搜尋";
   };
   q("save").onclick=async()=>{
-    const ssid=q("ssid").value.trim(); if(!ssid){ toast("請輸入 Wi-Fi 名稱"); return }
-    if(!confirm("儲存後顯示屏會重新啟動並連接「"+ssid+"」。繼續？")) return;
-    try{ await api("/api/wifi",{ssid,pass:q("pass").value});
-      box.innerHTML='<p><b>已儲存。</b>顯示屏正在重新啟動。請把手機連回家中 Wi-Fi，然後掃描顯示屏上的 QR Code 開啟設定頁。</p>';
-    }catch(e){ toast("儲存失敗："+e.message) }
+    const msg=q("msg");
+    const ssid=q("ssid").value.trim();
+    if(!ssid){ msg.className="msg-bad"; msg.textContent="請先輸入或選擇 Wi-Fi 名稱。"; q("ssid").focus(); return }
+    const pass=q("pass").value;
+    if(pass && pass.length<8){ msg.className="msg-bad"; msg.textContent="Wi-Fi 密碼最少 8 個字元，請再檢查。"; q("pass").focus(); return }
+    msg.className=""; msg.textContent="";
+    if(!await ask("儲存後顯示屏會重新啟動並連接「"+ssid+"」。繼續？","儲存並連接")) return;
+    const b=q("save"); b.disabled=true; b.textContent="儲存中…"; msg.className=""; msg.textContent="";
+    try{ await api("/api/wifi",{ssid,pass});
+      box.innerHTML='<p class="msg-ok">已儲存，顯示屏正在重新啟動並連接「'+esc(ssid)+'」。</p>'+
+        '<p>約 30 秒後看顯示屏：</p><ul>'+
+        '<li><b>顯示「未設定車站」及 QR Code</b>：已成功連接。手機連回家中 Wi-Fi，掃描該 QR Code 設定路線。</li>'+
+        '<li><b>再次顯示「設定 Wi-Fi」及「未能連接」</b>：密碼不正確或收不到訊號，請重新連接設定 Wi-Fi 再輸入一次。</li></ul>';
+    }catch(e){ msg.className="msg-bad"; msg.textContent="儲存失敗："+e.message+"。請再按一次「儲存並連接」。"; b.disabled=false; b.textContent="儲存並連接" }
   };
 }
 
